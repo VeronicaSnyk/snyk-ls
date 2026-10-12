@@ -38,7 +38,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        repo: [snyk/user-docs, snyk/user-docs-internal]
+        # Each docs repo stores the matrix at its own path. Keep matrix_path in sync
+        # with MATRIX_PATH in that repo's .github/scripts/merge-compatibility-matrix.sh.
+        include:
+          - repo: snyk/user-docs
+            matrix_path: developer-tools/integrations/snyk-ide-plugins-and-extensions/compatibility-matrix.md
+          - repo: snyk/user-docs-internal
+            matrix_path: docs/developer-tools/integrations/snyk-ide-plugins-and-extensions/compatibility-matrix.md
     steps:
       - name: Checkout snyk-ls repository
         uses: actions/checkout@v4
@@ -80,9 +86,11 @@ jobs:
 
       - name: Update compatibility matrix in ${{ matrix.repo }}
         if: github.event.inputs.dry_run != 'true'
+        env:
+          MATRIX_PATH: ${{ matrix.matrix_path }}
         run: |
-          mkdir -p docs-repo/developer-tools/snyk-ide-plugins-and-extensions
-          cp output/compatibility-matrix.md docs-repo/developer-tools/snyk-ide-plugins-and-extensions/compatibility-matrix.md
+          mkdir -p "docs-repo/$(dirname "$MATRIX_PATH")"
+          cp output/compatibility-matrix.md "docs-repo/$MATRIX_PATH"
 
       - name: Create pull request
         if: github.event.inputs.dry_run != 'true'
@@ -90,6 +98,7 @@ jobs:
           GH_TOKEN: ${{ secrets.TEAM_IDE_PAT }}
           PUB_SIGNING_KEY: ${{ secrets.TEAM_IDE_USER_SSH_PUB }}
           DOCS_REPO: ${{ matrix.repo }}
+          MATRIX_PATH: ${{ matrix.matrix_path }}
         run: |
           cd docs-repo
 
@@ -110,7 +119,7 @@ jobs:
           git checkout -b "$BRANCH_NAME"
 
           # Commit changes
-          git add developer-tools/snyk-ide-plugins-and-extensions/compatibility-matrix.md
+          git add "$MATRIX_PATH"
 
           # Check if there are changes to commit
           if git diff --staged --quiet; then
