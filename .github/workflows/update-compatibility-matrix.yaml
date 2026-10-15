@@ -38,7 +38,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        repo: [snyk/user-docs, snyk/user-docs-internal]
+        # snyk/user-docs is a read-only mirror of the docs source repository and
+        # is overwritten on every promotion, so it is not a target.
+        repo: [snyk/user-docs-internal]
+    env:
+      # Path of the published compatibility matrix page in the docs repository.
+      MATRIX_PATH: docs/developer-tools/snyk-ide-plugins-and-extensions/compatibility-matrix.md
     steps:
       - name: Checkout snyk-ls repository
         uses: actions/checkout@v4
@@ -81,8 +86,8 @@ jobs:
       - name: Update compatibility matrix in ${{ matrix.repo }}
         if: github.event.inputs.dry_run != 'true'
         run: |
-          mkdir -p docs-repo/developer-tools/snyk-ide-plugins-and-extensions
-          cp output/compatibility-matrix.md docs-repo/developer-tools/snyk-ide-plugins-and-extensions/compatibility-matrix.md
+          mkdir -p "docs-repo/$(dirname "$MATRIX_PATH")"
+          cp output/compatibility-matrix.md "docs-repo/$MATRIX_PATH"
 
       - name: Create pull request
         if: github.event.inputs.dry_run != 'true'
@@ -110,7 +115,7 @@ jobs:
           git checkout -b "$BRANCH_NAME"
 
           # Commit changes
-          git add developer-tools/snyk-ide-plugins-and-extensions/compatibility-matrix.md
+          git add "$MATRIX_PATH"
 
           # Check if there are changes to commit
           if git diff --staged --quiet; then
